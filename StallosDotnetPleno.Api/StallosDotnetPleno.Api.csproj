@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\StallosDotnetPleno.Application\StallosDotnetPleno.Application.csproj" />
     <ProjectReference Include="..\StallosDotnetPleno.Infrastructure\StallosDotnetPleno.Infrastructure.csproj" />
   </ItemGroup>
 

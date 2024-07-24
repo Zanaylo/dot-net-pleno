@@ -1,6 +1,6 @@
 using StallosDotnetPleno.Infrastructure.Extensions;
 using StallosDotnetPleno.Infrastructure;
-using StallosDotnetPleno.Infrastructure.Seeders;
+using StallosDotnetPleno.Infrastructure.Seeders.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 

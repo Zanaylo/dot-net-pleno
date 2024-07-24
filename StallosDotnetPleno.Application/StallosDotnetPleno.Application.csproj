@@ -7,7 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Services\" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\StallosDotnetPleno.Domain\StallosDotnetPleno.Domain.csproj" />
+    <ProjectReference Include="..\StallosDotnetPleno.Infrastructure\StallosDotnetPleno.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
