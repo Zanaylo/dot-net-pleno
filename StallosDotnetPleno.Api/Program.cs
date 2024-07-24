@@ -1,3 +1,7 @@
+using StallosDotnetPleno.Infrastructure.Extensions;
+using StallosDotnetPleno.Infrastructure;
+using StallosDotnetPleno.Infrastructure.Seeders;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -6,8 +10,14 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+
+var scope = app.Services.CreateScope();
+var tipoSeeder = scope.ServiceProvider.GetRequiredService<ITipoPessoaSeeder>();
+
+await tipoSeeder.Seed();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

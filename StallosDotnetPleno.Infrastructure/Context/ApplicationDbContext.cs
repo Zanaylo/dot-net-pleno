@@ -8,20 +8,13 @@ using System.Threading.Tasks;
 
 namespace StallosDotnetPleno.Infrastructure.Context;
 
-public class ApplicationDbContext : DbContext
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
 {
-
     public DbSet<TipoPessoa> TipoPessoas { get; set; }
     public DbSet<Pessoa> Pessoas { get; set; }
     public DbSet<Endereco> Enderecos { get; set; }
     public DbSet<PessoaEndereco> PessoaEnderecos { get; set; }
     public DbSet<PessoaLista> PessoaListas { get; set; }
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-
-        optionsBuilder.UseSqlServer("Server=Pedrin\\SQLEXPRESS;Database=StallosTecnologiaDB;Integrated Security=True; trustServerCertificate=true;");
-    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
