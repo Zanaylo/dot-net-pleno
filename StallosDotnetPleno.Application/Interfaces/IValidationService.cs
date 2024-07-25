@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace StallosDotnetPleno.Application.Services.Interfaces;
+namespace StallosDotnetPleno.Application.Interfaces;
 
 public interface IValidationService
 {

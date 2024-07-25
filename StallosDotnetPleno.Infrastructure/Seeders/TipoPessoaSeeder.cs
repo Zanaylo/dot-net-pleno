@@ -1,6 +1,6 @@
 ﻿using StallosDotnetPleno.Domain.Entities;
 using StallosDotnetPleno.Infrastructure.Context;
-using StallosDotnetPleno.Infrastructure.Seeders.Interfaces;
+using StallosDotnetPleno.Infrastructure.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,7 +27,7 @@ internal class TipoPessoaSeeder(ApplicationDbContext context) : ITipoPessoaSeede
         }
     }
 
-    private IEnumerable<TipoPessoa> GetTipos()
+    private List<TipoPessoa> GetTipos()
     {
         List<TipoPessoa> tipoPessoas =
             [

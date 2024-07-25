@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StallosDotnetPleno.Infrastructure.Context;
 
@@ -10,9 +11,11 @@ using StallosDotnetPleno.Infrastructure.Context;
 namespace StallosDotnetPleno.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240724194103_ChangeTablesNames")]
+    partial class ChangeTablesNames
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -55,7 +58,7 @@ namespace StallosDotnetPleno.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("TB_ENDERECO", (string)null);
+                    b.ToTable("TB_ENDERECO");
                 });
 
             modelBuilder.Entity("StallosDotnetPleno.Domain.Entities.Pessoa", b =>
@@ -81,7 +84,7 @@ namespace StallosDotnetPleno.Infrastructure.Migrations
 
                     b.HasIndex("IdTipoPessoa");
 
-                    b.ToTable("TB_PESSOA", (string)null);
+                    b.ToTable("TB_PESSOA");
                 });
 
             modelBuilder.Entity("StallosDotnetPleno.Domain.Entities.PessoaEndereco", b =>
@@ -96,7 +99,7 @@ namespace StallosDotnetPleno.Infrastructure.Migrations
 
                     b.HasIndex("IdEndereco");
 
-                    b.ToTable("TB_PESSOA_ENDERECO", (string)null);
+                    b.ToTable("TB_PESSOA_ENDERECO");
                 });
 
             modelBuilder.Entity("StallosDotnetPleno.Domain.Entities.PessoaLista", b =>
@@ -118,7 +121,7 @@ namespace StallosDotnetPleno.Infrastructure.Migrations
 
                     b.HasIndex("IdPessoa");
 
-                    b.ToTable("TB_PESSOA_LISTA", (string)null);
+                    b.ToTable("TB_PESSOA_LISTA");
                 });
 
             modelBuilder.Entity("StallosDotnetPleno.Domain.Entities.TipoPessoa", b =>
@@ -135,7 +138,7 @@ namespace StallosDotnetPleno.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("TB_TIPO_PESSOA", (string)null);
+                    b.ToTable("TB_TIPO_PESSOA");
                 });
 
             modelBuilder.Entity("StallosDotnetPleno.Domain.Entities.Pessoa", b =>

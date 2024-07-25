@@ -1,4 +1,4 @@
-﻿using StallosDotnetPleno.Application.Services.Interfaces;
+﻿using StallosDotnetPleno.Application.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
