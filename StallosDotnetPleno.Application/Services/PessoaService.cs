@@ -1,14 +1,9 @@
-﻿using AutoMapper;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using StallosDotnetPleno.Application.Interfaces;
+using StallosDotnetPleno.Application.ResultObject;
 using StallosDotnetPleno.Domain.Entities;
 using StallosDotnetPleno.Domain.ViewModels;
 using StallosDotnetPleno.Infrastructure.Context;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace StallosDotnetPleno.Application.Services;
 
@@ -25,17 +20,21 @@ public class PessoaService : IPessoaService
         _taskQueue = taskQueue;
     }
 
-    public async Task<int> CreatePessoaAsync(PostPessoaView postPessoaView)
+    public async Task<OperationResult<int>> CreatePessoaAsync(PostPessoaView postPessoaView)
     {
         var tipoPessoa = await GetTipoPessoaAsync(postPessoaView.TipoPessoa);
         if (tipoPessoa == null)
         {
-            throw new ArgumentException("TipoPessoa inválido.");
+            return OperationResult<int>.FailureResult("TipoPessoa inválido.");
         }
 
         var pessoa = await MapToPessoaAsync(postPessoaView, tipoPessoa);
 
-        ValidatePessoa(pessoa);
+        var validationResult = ValidatePessoa(pessoa);
+        if (!validationResult.Success)
+        {
+            return OperationResult<int>.FailureResult(validationResult.ErrorMessage);
+        }
 
         _context.Pessoas.Add(pessoa);
         await _context.SaveChangesAsync();
@@ -45,10 +44,10 @@ public class PessoaService : IPessoaService
             await CheckPublicListAsync(pessoa);
         });
 
-        return pessoa.Id;
+        return OperationResult<int>.SuccessResult(pessoa.Id);
     }
 
-    public async Task<PessoaView> GetPessoaAsync(int id)
+    public async Task<OperationResult<PessoaView>> GetPessoaAsync(int id)
     {
         var pessoa = await _context.Pessoas
             .Include(p => p.TipoPessoa)
@@ -58,13 +57,13 @@ public class PessoaService : IPessoaService
 
         if (pessoa == null)
         {
-            throw new KeyNotFoundException("Pessoa não encontrada.");
+            return OperationResult<PessoaView>.FailureResult("Pessoa não encontrada.");
         }
 
-        return MapToPessoaView(pessoa);
+        return OperationResult<PessoaView>.SuccessResult(MapToPessoaView(pessoa));
     }
 
-    public async Task<List<PessoaView>> GetPessoasAsync()
+    public async Task<OperationResult<List<PessoaView>>> GetPessoasAsync()
     {
         var pessoas = await _context.Pessoas
             .Include(p => p.TipoPessoa)
@@ -72,10 +71,10 @@ public class PessoaService : IPessoaService
             .Include(p => p.PessoaListas)
             .ToListAsync();
 
-        return pessoas.Select(p => MapToPessoaView(p)).ToList();
+        return OperationResult<List<PessoaView>>.SuccessResult(pessoas.Select(p => MapToPessoaView(p)).ToList());
     }
 
-    public async Task UpdatePessoaAsync(int id, PostPessoaView postPessoaView)
+    public async Task<OperationResult> UpdatePessoaAsync(int id, PostPessoaView postPessoaView)
     {
         var pessoa = await _context.Pessoas
             .Include(p => p.TipoPessoa)
@@ -85,72 +84,78 @@ public class PessoaService : IPessoaService
 
         if (pessoa == null)
         {
-            throw new KeyNotFoundException("Pessoa não encontrada.");
+            return OperationResult.FailureResult("Pessoa não encontrada.");
         }
 
+        var validationResult = pessoa.Documento != postPessoaView.Documento
+            ? ValidatePessoa(pessoa)
+            : ValidatePessoaPut(pessoa);
 
-        if (pessoa.Documento != postPessoaView.Documento)
+        if (!validationResult.Success)
         {
-            ValidatePessoa(pessoa);
-        }
-        else
-        {
-            ValidatePessoaPut(pessoa);
+            return OperationResult.FailureResult(validationResult.ErrorMessage);
         }
 
         var tipoPessoa = await GetTipoPessoaAsync(postPessoaView.TipoPessoa);
         if (tipoPessoa == null)
         {
-            throw new ArgumentException("TipoPessoa inválido.");
+            return OperationResult.FailureResult("TipoPessoa inválido.");
         }
 
         await UpdatePessoaFromViewAsync(pessoa, postPessoaView, tipoPessoa);
 
-
         _context.Pessoas.Update(pessoa);
         await _context.SaveChangesAsync();
+
+        return OperationResult.SuccessResult();
     }
 
-    public async Task DeletePessoaAsync(int id)
+    public async Task<OperationResult> DeletePessoaAsync(int id)
     {
         var pessoa = await _context.Pessoas.FindAsync(id);
 
         if (pessoa == null)
         {
-            throw new KeyNotFoundException("Pessoa não encontrada.");
+            return OperationResult.FailureResult("Pessoa não encontrada.");
         }
 
         _context.Pessoas.Remove(pessoa);
         await _context.SaveChangesAsync();
+
+        return OperationResult.SuccessResult();
     }
 
-    private void ValidatePessoa(Pessoa pessoa)
+    private OperationResult ValidatePessoa(Pessoa pessoa)
     {
         var tipoPessoa = pessoa.TipoPessoa.Tipo.ToUpper();
 
         if (tipoPessoa == "PF" && !_validationService.ValidateCPF(pessoa.Documento))
-            throw new ArgumentException("CPF INVÁLIDO.");
+            return OperationResult.FailureResult("CPF INVÁLIDO.");
         if (tipoPessoa == "PJ" && !_validationService.ValidateCNPJ(pessoa.Documento))
-            throw new ArgumentException("CNPJ INVÁLIDO.");
+            return OperationResult.FailureResult("CNPJ INVÁLIDO.");
 
         if (_context.Pessoas.Any(p => p.Documento == pessoa.Documento))
-            throw new InvalidOperationException($"{(tipoPessoa == "PF" ? "CPF" : "CNPJ")} já cadastrado");
+            return OperationResult.FailureResult($"{(tipoPessoa == "PF" ? "CPF" : "CNPJ")} já cadastrado");
 
         if (!pessoa.PessoaEnderecos.Any())
-            throw new InvalidOperationException("Pelo menos um endereço precisa ser cadastrado.");
+            return OperationResult.FailureResult("Pelo menos um endereço precisa ser cadastrado.");
+
+        return OperationResult.SuccessResult();
     }
 
-    private void ValidatePessoaPut(Pessoa pessoa)
+    private OperationResult ValidatePessoaPut(Pessoa pessoa)
     {
         var tipoPessoa = pessoa.TipoPessoa.Tipo.ToUpper();
 
         if (tipoPessoa == "PF" && !_validationService.ValidateCPF(pessoa.Documento))
-            throw new ArgumentException("CPF INVÁLIDO.");
+            return OperationResult.FailureResult("CPF INVÁLIDO.");
         if (tipoPessoa == "PJ" && !_validationService.ValidateCNPJ(pessoa.Documento))
-            throw new ArgumentException("CNPJ INVÁLIDO.");
+            return OperationResult.FailureResult("CNPJ INVÁLIDO.");
 
         if (!pessoa.PessoaEnderecos.Any())
-            throw new InvalidOperationException("Pelo menos um endereço precisa ser cadastrado.");
+            return OperationResult.FailureResult("Pelo menos um endereço precisa ser cadastrado.");
+
+        return OperationResult.SuccessResult();
     }
 
     private async Task CheckPublicListAsync(Pessoa pessoa)
@@ -170,7 +175,6 @@ public class PessoaService : IPessoaService
 
     private async Task<bool> CheckIfPersonIsInPublicList(Pessoa pessoa)
     {
-        
         return false;
     }
 

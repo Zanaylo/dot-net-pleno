@@ -1,4 +1,5 @@
-﻿using StallosDotnetPleno.Domain.Entities;
+﻿using StallosDotnetPleno.Application.ResultObject;
+using StallosDotnetPleno.Domain.Entities;
 using StallosDotnetPleno.Domain.ViewModels;
 using System;
 using System.Collections.Generic;
@@ -10,9 +11,9 @@ namespace StallosDotnetPleno.Application.Interfaces;
 
 public interface IPessoaService
 {
-    Task<PessoaView> GetPessoaAsync(int id);
-    Task<List<PessoaView>> GetPessoasAsync();
-    Task<int> CreatePessoaAsync(PostPessoaView postPessoaView);
-    Task UpdatePessoaAsync(int id, PostPessoaView postPessoaView);
-    Task DeletePessoaAsync(int id);
+    Task<OperationResult<int>> CreatePessoaAsync(PostPessoaView postPessoaView);
+    Task<OperationResult<PessoaView>> GetPessoaAsync(int id);
+    Task<OperationResult<List<PessoaView>>> GetPessoasAsync();
+    Task<OperationResult> UpdatePessoaAsync(int id, PostPessoaView postPessoaView);
+    Task<OperationResult> DeletePessoaAsync(int id);
 }

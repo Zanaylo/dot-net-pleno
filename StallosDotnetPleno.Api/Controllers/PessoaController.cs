@@ -7,7 +7,6 @@ using StallosDotnetPleno.Domain.ViewModels;
 using StallosDotnetPleno.Infrastructure.Context;
 
 namespace StallosDotnetPleno.Api.Controllers;
-
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 [ApiController]
 [Route("pessoa")]
@@ -28,8 +27,13 @@ public class PessoaController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var id = await _pessoaService.CreatePessoaAsync(postPessoaView);
-        return CreatedAtAction(nameof(GetPessoa), new { id }, null);
+        var result = await _pessoaService.CreatePessoaAsync(postPessoaView);
+        if (!result.Success)
+        {
+            return BadRequest(result.ErrorMessage);
+        }
+
+        return CreatedAtAction(nameof(GetPessoa), new { id = result.Data }, null);
     }
 
     [HttpPut("{id}")]
@@ -40,52 +44,43 @@ public class PessoaController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        try
+        var result = await _pessoaService.UpdatePessoaAsync(id, postPessoaView);
+        if (!result.Success)
         {
+            return NotFound(result.ErrorMessage);
+        }
 
-            await _pessoaService.UpdatePessoaAsync(id, postPessoaView);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
+        return NoContent();
     }
-
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeletePessoa(int id)
     {
-        try
+        var result = await _pessoaService.DeletePessoaAsync(id);
+        if (!result.Success)
         {
-            await _pessoaService.DeletePessoaAsync(id);
-            return NoContent();
+            return NotFound(result.ErrorMessage);
         }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
+
+        return NoContent();
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<PessoaView>> GetPessoa(int id)
     {
-        try
+        var result = await _pessoaService.GetPessoaAsync(id);
+        if (!result.Success)
         {
-            var pessoa = await _pessoaService.GetPessoaAsync(id);
-            return Ok(pessoa);
+            return NotFound(result.ErrorMessage);
         }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
+
+        return Ok(result.Data);
     }
 
     [HttpGet]
     public async Task<ActionResult<List<PessoaView>>> GetPessoas()
     {
-        var pessoas = await _pessoaService.GetPessoasAsync();
-        return Ok(pessoas);
+        var result = await _pessoaService.GetPessoasAsync();
+        return Ok(result.Data);
     }
-
 }

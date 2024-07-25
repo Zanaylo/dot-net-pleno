@@ -4,13 +4,9 @@ using Microsoft.AspNetCore.Hosting;
 using StallosDotnetPleno.Application.Interfaces;
 using StallosDotnetPleno.Application.Services;
 using StallosDotnetPleno.Infrastructure.Interfaces;
-using System.Text.Json.Serialization;
-using System.Text.Json;
-using StallosDotnetPleno.Api.Filter;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Authentication;
 using StallosDotnetPleno.Api.Security;
@@ -110,6 +106,7 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 app.UseMiddleware<UnauthorizedResponseMiddleware>();
+app.UseMiddleware<PessoaDataAnnotationException>();
 
 var scope = app.Services.CreateScope();
 var tipoSeeder = scope.ServiceProvider.GetRequiredService<ITipoPessoaSeeder>();
