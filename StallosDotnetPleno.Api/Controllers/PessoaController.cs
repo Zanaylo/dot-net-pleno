@@ -33,7 +33,7 @@ public class PessoaController : ControllerBase
             return BadRequest(result.ErrorMessage);
         }
 
-        return CreatedAtAction(nameof(GetPessoa), new { id = result.Data }, null);
+        return Content($"{postPessoaView.Nome} Criada com sucesso");
     }
 
     [HttpPut("{id}")]

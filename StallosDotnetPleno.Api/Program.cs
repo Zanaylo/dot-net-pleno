@@ -11,6 +11,7 @@ using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Authentication;
 using StallosDotnetPleno.Api.Security;
 using StallosDotnetPleno.Api.Middlewares;
+using StallosDotnetPleno.Api.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,9 +29,13 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddScoped<IPessoaService, PessoaService>();
 builder.Services.AddScoped<IValidationService, ValidationService>();
-builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
-builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IVerificacaoListaPublicaService, VerificacaoListaPublicaService>();
+builder.Services.AddScoped<IRoosterAuthService, RoosterAuthService>();
+builder.Services.AddScoped<IRooterApiService, RooterApiService>();
+builder.Services.AddSingleton<ITokenService, TokenService>();
+builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
+builder.Services.AddHostedService<BackgroundTaskService>();
 
 var key = Encoding.ASCII.GetBytes("StallosDotNetPlenoTesteResgateDeInformacaoEmListaPublica");
 
@@ -109,6 +114,7 @@ app.UseMiddleware<UnauthorizedResponseMiddleware>();
 app.UseMiddleware<PessoaDataAnnotationException>();
 
 var scope = app.Services.CreateScope();
+
 var tipoSeeder = scope.ServiceProvider.GetRequiredService<ITipoPessoaSeeder>();
 
 await tipoSeeder.Seed();

@@ -19,7 +19,7 @@ public class PostPessoaView
     public string TipoPessoa { get; set; } = null!;
 
     [Required(ErrorMessage = "Campo Documento é requerido")]
-    [StringLength(14, MinimumLength = 11, ErrorMessage = "Informe todos os números do CPF ou CNPJ sem caracteres especiais")]
+    [StringLength(18, MinimumLength = 11, ErrorMessage = "Informe todos os números do CPF ou CNPJ")]
     public string Documento { get; set; } = null!;
 
     [RequiredList]

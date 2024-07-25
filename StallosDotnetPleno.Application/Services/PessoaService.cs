@@ -1,48 +1,55 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using StallosDotnetPleno.Application.Interfaces;
 using StallosDotnetPleno.Application.ResultObject;
 using StallosDotnetPleno.Domain.Entities;
 using StallosDotnetPleno.Domain.ViewModels;
 using StallosDotnetPleno.Infrastructure.Context;
+using StallosDotnetPleno.Infrastructure.Migrations;
+using System.Text.RegularExpressions;
 
 namespace StallosDotnetPleno.Application.Services;
 
-public class PessoaService : IPessoaService
+public class PessoaService(ApplicationDbContext context, IValidationService validationService, IBackgroundTaskQueue taskQueue, IVerificacaoListaPublicaService verificacaoListaPublica, ILogger<PessoaService> logger, IServiceScopeFactory scopeFactory) : IPessoaService
 {
-    private readonly ApplicationDbContext _context;
-    private readonly IValidationService _validationService;
-    private readonly IBackgroundTaskQueue _taskQueue;
-
-    public PessoaService(ApplicationDbContext context, IValidationService validationService, IBackgroundTaskQueue taskQueue)
-    {
-        _context = context;
-        _validationService = validationService;
-        _taskQueue = taskQueue;
-    }
-
+    private readonly ApplicationDbContext _context = context;
+    private readonly IValidationService _validationService = validationService;
+    private readonly IBackgroundTaskQueue _taskQueue = taskQueue;
+    private readonly IVerificacaoListaPublicaService _verificacaoListaPublica = verificacaoListaPublica;
+    private readonly ILogger<PessoaService> _logger = logger;
+    private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
     public async Task<OperationResult<int>> CreatePessoaAsync(PostPessoaView postPessoaView)
     {
-        var tipoPessoa = await GetTipoPessoaAsync(postPessoaView.TipoPessoa);
+        TipoPessoa tipoPessoa = await GetTipoPessoaAsync(postPessoaView.TipoPessoa);
         if (tipoPessoa == null)
         {
             return OperationResult<int>.FailureResult("TipoPessoa inválido.");
         }
 
-        var pessoa = await MapToPessoaAsync(postPessoaView, tipoPessoa);
+        Pessoa pessoa = await MapToPessoaAsync(postPessoaView, tipoPessoa);
 
-        var validationResult = ValidatePessoa(pessoa);
+        OperationResult validationResult = ValidatePessoa(pessoa);
         if (!validationResult.Success)
         {
             return OperationResult<int>.FailureResult(validationResult.ErrorMessage);
         }
 
-        _context.Pessoas.Add(pessoa);
+        await _context.Pessoas.AddAsync(pessoa);
         await _context.SaveChangesAsync();
 
         _taskQueue.QueueBackgroundWorkItem(async token =>
         {
-            await CheckPublicListAsync(pessoa);
+            try
+            {
+                await CheckPublicListAsync(pessoa, token);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao buscar na lista.");
+            }
         });
+
 
         return OperationResult<int>.SuccessResult(pessoa.Id);
     }
@@ -158,24 +165,20 @@ public class PessoaService : IPessoaService
         return OperationResult.SuccessResult();
     }
 
-    private async Task CheckPublicListAsync(Pessoa pessoa)
+    public async Task CheckPublicListAsync(Pessoa pessoa, CancellationToken token)
     {
-        bool isInPublicList = await CheckIfPersonIsInPublicList(pessoa);
-        if (isInPublicList)
+        using (var scope = _scopeFactory.CreateScope())
         {
-            var pessoaLista = new PessoaLista
-            {
-                IdPessoa = pessoa.Id,
-                Lista = "Public List Name"
-            };
-            _context.PessoaListas.Add(pessoaLista);
-            await _context.SaveChangesAsync();
-        }
-    }
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var verificacaoListaPublica = scope.ServiceProvider.GetRequiredService<IVerificacaoListaPublicaService>();
 
-    private async Task<bool> CheckIfPersonIsInPublicList(Pessoa pessoa)
-    {
-        return false;
+            List<PessoaLista> listaPublicaPessoa = await verificacaoListaPublica.VerificarListaPublica(pessoa);
+            if (listaPublicaPessoa.Count > 0)
+            {
+                await context.PessoaListas.AddRangeAsync(listaPublicaPessoa, token);
+                await context.SaveChangesAsync(token);
+            }
+        }
     }
 
     private async Task<TipoPessoa> GetTipoPessoaAsync(string tipo)
@@ -199,10 +202,13 @@ public class PessoaService : IPessoaService
 
     private async Task<Pessoa> MapToPessoaAsync(PostPessoaView postPessoaView, TipoPessoa tipoPessoa)
     {
+
+        var documentCorrigido = Regex.Replace(postPessoaView.Documento, @"[^\d]", "");
+
         var pessoa = new Pessoa
         {
             Nome = postPessoaView.Nome,
-            Documento = postPessoaView.Documento,
+            Documento = documentCorrigido,
             TipoPessoa = tipoPessoa
         };
 
