@@ -24,10 +24,10 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var username = HttpContext.User.Identity!.Name;
+            string username = HttpContext.User.Identity!.Name;
             if (username != null && HttpContext.User.Identity.IsAuthenticated)
             {
-                var token = _tokenService.GenerateToken(username);
+                string token = _tokenService.GenerateToken(username);
                 return Ok(new { token });
             }
             return Unauthorized();

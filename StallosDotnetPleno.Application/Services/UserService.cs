@@ -13,15 +13,8 @@ namespace StallosDotnetPleno.Application.Services;
 
 public class UserService(ApplicationDbContext context, IMemoryCache cache) : IUserService
 {
-    //private readonly IServiceProvider _serviceProvider;
     private readonly ApplicationDbContext _context = context;
     private readonly IMemoryCache _cache = cache;
-
-    //public UserService(IServiceProvider serviceProvider, IMemoryCache cache)
-    //{
-    //    _serviceProvider = serviceProvider;
-    //    _cache = cache;
-    //}
 
     private void SaveUser(User user)
     {

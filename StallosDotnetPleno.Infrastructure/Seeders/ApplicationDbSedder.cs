@@ -1,4 +1,5 @@
-﻿using StallosDotnetPleno.Domain.Entities;
+﻿using Microsoft.Extensions.Configuration;
+using StallosDotnetPleno.Domain.Entities;
 using StallosDotnetPleno.Infrastructure.Context;
 using StallosDotnetPleno.Infrastructure.Interfaces;
 using System;
@@ -9,8 +10,9 @@ using System.Threading.Tasks;
 
 namespace StallosDotnetPleno.Infrastructure.Seeders;
 
-internal class ApplicationDbSedder(ApplicationDbContext context) : IApplicationDbSedder
+internal class ApplicationDbSedder(ApplicationDbContext context, IConfiguration configuration) : IApplicationDbSedder
 {
+    private readonly IConfiguration _configuration = configuration;
 
     public async Task Seed()
     {
@@ -27,13 +29,13 @@ internal class ApplicationDbSedder(ApplicationDbContext context) : IApplicationD
 
             if (!context.Users.Any())
             {
-
                 var users = CreateUsers();
 
-                await context.Users.AddRangeAsync(users);
-
-                await context.SaveChangesAsync();
-
+                if (users.Count > 0)
+                {
+                    await context.Users.AddRangeAsync(users);
+                    await context.SaveChangesAsync();
+                }
             }
         }
     }
@@ -56,17 +58,28 @@ internal class ApplicationDbSedder(ApplicationDbContext context) : IApplicationD
 
     private List<User> CreateUsers()
     {
-        List<User> users =
-            [
-                new(){
-                    ClientId = "StallosMaster",
-                    ClientSecret = "StallosPassword",
-                    RosterId = "20jv8p2v8nbl6dn7rrcet4bidd",
-                    RosterSecret = "1js72l6hr1hl709u2sk56aj0mthb047irvfrna27b98d8o126q27",
-                    RosterXApi = "Q94j9LQyma446FhErixWe5RzWDtSWKu65HIole5b",
-                }
+        string clientId = _configuration["UserCredentials:ClientId"]!;
+        string clientSecret = _configuration["UserCredentials:ClientSecret"]!;
+        string rosterId = _configuration["UserCredentials:RosterId"]!;
+        string rosterSecret = _configuration["UserCredentials:RosterSecret"]!;
+        string rosterXApi = _configuration["UserCredentials:RosterXApi"]!;
 
-            ];
+        List<User> users = new List<User>();
+        if (!string.IsNullOrEmpty(clientId) &&
+            !string.IsNullOrEmpty(clientSecret) &&
+            !string.IsNullOrEmpty(rosterId) &&
+            !string.IsNullOrEmpty(rosterSecret) &&
+            !string.IsNullOrEmpty(rosterXApi))
+        {
+            users.Add(new User
+            {
+                ClientId = clientId,
+                ClientSecret = clientSecret,
+                RosterId = rosterId,
+                RosterSecret = rosterSecret,
+                RosterXApi = rosterXApi,
+            });
+        }
 
         return users;
     }
