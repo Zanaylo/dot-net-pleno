@@ -7,9 +7,7 @@ A descrição da avaliação está descrita em nosso [Wiki](https://github.com/S
 
 1. Realize o Update-database
 
-2. Configure a string de conexão
-
-3. Defina no `secret.json` ou no `appsettings.json` o seguinte padrão:
+2. Defina no `secret.json` ou no `appsettings.json` o seguinte padrão:
 
     ```json
     {
