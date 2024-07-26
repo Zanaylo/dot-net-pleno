@@ -83,18 +83,34 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
 
     public async Task<OperationResult> UpdatePessoaAsync(int id, PostPessoaView postPessoaView)
     {
-        var pessoa = await _context.Pessoas
+
+        var cadastroPessoa = await _context.Pessoas
             .Include(p => p.TipoPessoa)
             .Include(p => p.PessoaEnderecos).ThenInclude(pe => pe.Endereco)
             .Include(p => p.PessoaListas)
             .FirstOrDefaultAsync(p => p.Id == id);
 
-        if (pessoa == null)
+        if (cadastroPessoa == null)
         {
             return OperationResult.FailureResult("Pessoa não encontrada.");
         }
 
-        var validationResult = pessoa.Documento != postPessoaView.Documento
+        TipoPessoa tipoPessoa = await GetTipoPessoaAsync(postPessoaView.TipoPessoa);
+        if (tipoPessoa == null)
+        {
+            return OperationResult<int>.FailureResult("TipoPessoa inválido.");
+        }
+
+        Pessoa pessoa = await MapToPessoaAsync(postPessoaView, tipoPessoa);
+
+        OperationResult validationResult = ValidatePessoa(pessoa);
+
+        if (!validationResult.Success)
+        {
+            return OperationResult<int>.FailureResult(validationResult.ErrorMessage);
+        }
+
+        var validationResult = cadastroPessoa.Documento != pessoa.Documento
             ? ValidatePessoa(pessoa)
             : ValidatePessoaPut(pessoa);
 
@@ -167,17 +183,15 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
 
     public async Task CheckPublicListAsync(Pessoa pessoa, CancellationToken token)
     {
-        using (var scope = _scopeFactory.CreateScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var verificacaoListaPublica = scope.ServiceProvider.GetRequiredService<IVerificacaoListaPublicaService>();
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var verificacaoListaPublica = scope.ServiceProvider.GetRequiredService<IVerificacaoListaPublicaService>();
 
-            List<PessoaLista> listaPublicaPessoa = await verificacaoListaPublica.VerificarListaPublica(pessoa);
-            if (listaPublicaPessoa.Count > 0)
-            {
-                await context.PessoaListas.AddRangeAsync(listaPublicaPessoa, token);
-                await context.SaveChangesAsync(token);
-            }
+        List<PessoaLista> listaPublicaPessoa = await verificacaoListaPublica.VerificarListaPublica(pessoa);
+        if (listaPublicaPessoa.Count > 0)
+        {
+            await context.PessoaListas.AddRangeAsync(listaPublicaPessoa, token);
+            await context.SaveChangesAsync(token);
         }
     }
 

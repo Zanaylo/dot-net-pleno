@@ -5,12 +5,8 @@ using System.Text.Json;
 
 namespace StallosDotnetPleno.Api.Entities;
 
-public class RooterApiService : IRooterApiService
+public class RooterApiService(IRoosterAuthService authService) : IRooterApiService
 {
-    private readonly IRoosterAuthService _authService;
-
-    public RooterApiService(IRoosterAuthService authService) => _authService = authService;
-
     public async Task<string> BolsaFamilia(string name, string cpf, string authorizationToken)
     {
         var client = new HttpClient();
@@ -21,7 +17,6 @@ public class RooterApiService : IRooterApiService
         request.Headers.Add("accept", "application/json");
         request.Headers.Add("protocolo", protocolo);
         request.Headers.Add("Authorization", authorizationToken);
-
 
         try
         {
