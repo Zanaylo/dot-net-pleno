@@ -49,8 +49,20 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
             }
         });
 
+        var showPessoa = await _context.Pessoas
+           .Include(p => p.TipoPessoa)
+           .Include(p => p.PessoaEnderecos).ThenInclude(pe => pe.Endereco)
+           .FirstOrDefaultAsync(p => p.Id == pessoa.Id);
 
-        return OperationResult.SuccessResult(pessoa.Id);
+        if (showPessoa != null)
+        {
+            return OperationResult.SuccessResult(MapToPessoaView(showPessoa));
+
+        }
+        else
+        {
+            return OperationResult.SuccessResult("Registro Inserido com Sucesso");
+        }
     }
 
     public async Task<OperationResult> GetPessoaAsync(int id)
@@ -69,15 +81,38 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
         return OperationResult.SuccessResult(MapToPessoaView(pessoa));
     }
 
-    public async Task<OperationResult> GetPessoasAsync()
+    public async Task<OperationResult> GetPessoasAsync(int pageNumber, int pageSize)
     {
-        var pessoas = await _context.Pessoas
+        if (pageNumber < 1 || pageSize < 1)
+        {
+            return OperationResult.FailureResult("Páginação Invalida");
+        }
+
+        var query = _context.Pessoas
             .Include(p => p.TipoPessoa)
             .Include(p => p.PessoaEnderecos).ThenInclude(pe => pe.Endereco)
             .Include(p => p.PessoaListas)
+            .AsQueryable();
+
+        var totalCount = await query.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        var pessoas = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
-        return OperationResult.SuccessResult(pessoas.Select(p => MapToPessoaView(p)).ToList());
+        var pessoasView = pessoas.Select(p => MapToPessoaView(p)).ToList();
+        var paginatedResult = new PaginatedResult<PessoaView>
+        {
+            Data = pessoasView,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages
+        };
+
+        return OperationResult.SuccessResult(paginatedResult);
     }
 
     public async Task<OperationResult> UpdatePessoaAsync(int id, PostPessoaView postPessoaView)
@@ -95,48 +130,56 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
             return OperationResult.FailureResult("Pessoa não encontrada.");
         }
 
-        TipoPessoa tipoPessoa = await GetTipoPessoaAsync(postPessoaView.TipoPessoa);
-        if (tipoPessoa == null)
-        {
-            return OperationResult.FailureResult("TipoPessoa inválido.");
-        }
-
-        var existingPessoa = await _context.Pessoas
-            .FirstOrDefaultAsync(p => p.Documento == documentCorrigido && p.Id != id);
-        if (existingPessoa != null)
-        {
-            return OperationResult.FailureResult("Documento já cadastrado para outra pessoa.");
-        }
-
         var documentChanged = cadastroPessoa.Documento != documentCorrigido;
-        var tipoPessoaChanged = cadastroPessoa.TipoPessoa != tipoPessoa;
+        var tipoPessoaChanged = cadastroPessoa.TipoPessoa.Tipo != postPessoaView.TipoPessoa;
         var nomeChanged = cadastroPessoa.Nome != postPessoaView.Nome;
 
-        if (tipoPessoaChanged && !documentChanged)
+        if (tipoPessoaChanged || documentChanged)
         {
-            return OperationResult.FailureResult("Tipo Pessoa só poderá ser alterado se o documento também ser alterado.");
+            var tipoPessoa = await GetTipoPessoaAsync(postPessoaView.TipoPessoa);
+            if (tipoPessoa == null)
+            {
+                return OperationResult.FailureResult("TipoPessoa inválido.");
+            }
+
+            if (postPessoaView.TipoPessoa.ToUpper() == "PF")
+            {
+                if (!_validationService.ValidateCPF(documentCorrigido))
+                {
+                    return OperationResult.FailureResult("CPF inválido.");
+                }
+            }
+            else if (postPessoaView.TipoPessoa.ToUpper() == "PJ")
+            {
+                if (!_validationService.ValidateCNPJ(documentCorrigido))
+                {
+                    return OperationResult.FailureResult("CNPJ inválido.");
+                }
+            }
+
+            if (documentChanged)
+            {
+                var existingPessoa = await _context.Pessoas
+                    .FirstOrDefaultAsync(p => p.Documento == documentCorrigido && p.Id != id);
+                if (existingPessoa != null)
+                {
+                    return OperationResult.FailureResult("Documento já cadastrado pessoa.");
+                }
+            }
+
+            cadastroPessoa.TipoPessoa = tipoPessoa;
+            cadastroPessoa.Documento = documentCorrigido;
         }
 
-        postPessoaView.Documento = documentCorrigido;
-        await UpdatePessoaFromViewAsync(cadastroPessoa, postPessoaView, tipoPessoa);
+        if (nomeChanged)
+        {
+            cadastroPessoa.Nome = postPessoaView.Nome;
+        }
 
-        var oldEnderecos = cadastroPessoa.PessoaEnderecos.Select(pe => pe.Endereco).ToList();
-        var newEnderecos = cadastroPessoa.PessoaEnderecos.Select(pe => pe.Endereco).ToList();
-        var removedEnderecos = oldEnderecos.Except(newEnderecos).ToList();
+        await UpdatePessoaEnderecosAsync(cadastroPessoa, postPessoaView.Enderecos);
 
         _context.Pessoas.Update(cadastroPessoa);
         await _context.SaveChangesAsync();
-
-        var unusedEnderecos = await _context.Enderecos
-            .Where(e => removedEnderecos.Select(re => re.Id).Contains(e.Id) &&
-                        !_context.PessoaEnderecos.Any(pe => pe.IdEndereco == e.Id))
-            .ToListAsync();
-
-        if (unusedEnderecos.Count != 0)
-        {
-            _context.Enderecos.RemoveRange(unusedEnderecos);
-            await _context.SaveChangesAsync();
-        }
 
         if (documentChanged || nomeChanged)
         {
@@ -155,9 +198,49 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
             });
         }
 
-        return OperationResult.SuccessResult();
+
+        var showPessoa = await _context.Pessoas
+            .Include(p => p.TipoPessoa)
+            .Include(p => p.PessoaEnderecos).ThenInclude(pe => pe.Endereco)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (showPessoa != null)
+        {
+            return OperationResult.SuccessResult(MapToPessoaView(showPessoa));
+
+        }
+        else
+        {
+            return OperationResult.SuccessResult($"Registro '{id}', Editado com Sucesso");
+
+        }
+
     }
 
+    private void UpdateEnderecos(Pessoa pessoa, List<Endereco> newEnderecos)
+    {
+        var existingEnderecos = _context.Enderecos.ToList();
+        pessoa.PessoaEnderecos.Clear();
+
+        foreach (var newEndereco in newEnderecos)
+        {
+            var endereco = existingEnderecos.FirstOrDefault(e =>
+                e.Cep == newEndereco.Cep &&
+                e.Logradouro == newEndereco.Logradouro &&
+                e.Numero == newEndereco.Numero &&
+                e.Bairro == newEndereco.Bairro &&
+                e.Cidade == newEndereco.Cidade &&
+                e.Uf == newEndereco.Uf);
+
+            if (endereco == null)
+            {
+                endereco = newEndereco;
+                _context.Enderecos.Add(endereco);
+            }
+
+            pessoa.PessoaEnderecos.Add(new PessoaEndereco { Endereco = endereco });
+        }
+    }
 
     public async Task<OperationResult> DeletePessoaAsync(int id)
     {
@@ -185,7 +268,7 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
             await _context.SaveChangesAsync();
         }
 
-        return OperationResult.SuccessResult();
+        return OperationResult.SuccessResult($"Registro '{id}' Deletado com Sucesso");
     }
 
     private OperationResult ValidatePessoa(Pessoa pessoa)
@@ -342,4 +425,63 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
         pessoa.PessoaEnderecos.Clear();
         pessoa.PessoaEnderecos.AddRange(newPessoaEnderecos);
     }
+
+    private async Task UpdatePessoaEnderecosAsync(Pessoa pessoa, List<EnderecoView> enderecoViews)
+    {
+        var existingEnderecos = await _context.Enderecos.ToListAsync();
+        var oldEnderecos = pessoa.PessoaEnderecos.Select(pe => pe.Endereco).ToList();
+        pessoa.PessoaEnderecos.Clear();
+
+        foreach (var enderecoView in enderecoViews)
+        {
+            var endereco = existingEnderecos.FirstOrDefault(e =>
+                e.Cep == enderecoView.Cep &&
+                e.Logradouro == enderecoView.Logradouro &&
+                e.Numero == enderecoView.Numero &&
+                e.Bairro == enderecoView.Bairro &&
+                e.Cidade == enderecoView.Cidade &&
+                e.Uf == enderecoView.Uf);
+
+            if (endereco == null)
+            {
+                endereco = MapToEndereco(enderecoView);
+                _context.Enderecos.Add(endereco);
+            }
+
+            pessoa.PessoaEnderecos.Add(new PessoaEndereco { Pessoa = pessoa, Endereco = endereco });
+        }
+
+        await _context.SaveChangesAsync();
+
+        var removedEnderecos = oldEnderecos.Except(pessoa.PessoaEnderecos.Select(pe => pe.Endereco)).ToList();
+        await RemoveOrphanEnderecosAsync(removedEnderecos);
+    }
+
+    private Endereco MapToEndereco(EnderecoView enderecoView)
+    {
+        return new Endereco
+        {
+            Cep = enderecoView.Cep,
+            Logradouro = enderecoView.Logradouro,
+            Numero = enderecoView.Numero,
+            Bairro = enderecoView.Bairro,
+            Cidade = enderecoView.Cidade,
+            Uf = enderecoView.Uf
+        };
+    }
+
+    private async Task RemoveOrphanEnderecosAsync(List<Endereco> removedEnderecos)
+    {
+        var unusedEnderecos = await _context.Enderecos
+            .Where(e => removedEnderecos.Select(re => re.Id).Contains(e.Id) &&
+                        !_context.PessoaEnderecos.Any(pe => pe.IdEndereco == e.Id))
+            .ToListAsync();
+
+        if (unusedEnderecos.Any())
+        {
+            _context.Enderecos.RemoveRange(unusedEnderecos);
+            await _context.SaveChangesAsync();
+        }
+    }
+
 }

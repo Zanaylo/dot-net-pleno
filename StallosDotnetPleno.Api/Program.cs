@@ -29,13 +29,17 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddScoped<IPessoaService, PessoaService>();
 builder.Services.AddScoped<IValidationService, ValidationService>();
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IVerificacaoListaPublicaService, VerificacaoListaPublicaService>();
 builder.Services.AddScoped<IRosterAuthService, RosterAuthService>();
 builder.Services.AddScoped<IRosterApiService, RosterApiService>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
 builder.Services.AddHostedService<BackgroundTaskService>();
+builder.Services.AddScoped<IVerificacaoListaPublicaService, VerificacaoListaPublicaService>();
+
+
+builder.Services.AddHttpClient();
+builder.Services.AddMemoryCache();
 
 var key = Encoding.ASCII.GetBytes(builder.Configuration["Jwt:SecretKey"]!);
 
@@ -114,7 +118,7 @@ app.UseMiddleware<UnauthorizedResponseMiddleware>();
 
 var scope = app.Services.CreateScope();
 
-var tipoSeeder = scope.ServiceProvider.GetRequiredService<ITipoPessoaSeeder>();
+var tipoSeeder = scope.ServiceProvider.GetRequiredService<IApplicationDbSedder>();
 
 await tipoSeeder.Seed();
 

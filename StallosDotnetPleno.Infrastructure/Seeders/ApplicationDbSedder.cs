@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace StallosDotnetPleno.Infrastructure.Seeders;
 
-internal class TipoPessoaSeeder(ApplicationDbContext context) : ITipoPessoaSeeder
+internal class ApplicationDbSedder(ApplicationDbContext context) : IApplicationDbSedder
 {
 
     public async Task Seed()
@@ -23,6 +23,17 @@ internal class TipoPessoaSeeder(ApplicationDbContext context) : ITipoPessoaSeede
                 await context.TipoPessoas.AddRangeAsync(TipoPessoas);
 
                 await context.SaveChangesAsync();
+            }
+
+            if (!context.Users.Any())
+            {
+
+                var users = CreateUsers();
+
+                await context.Users.AddRangeAsync(users);
+
+                await context.SaveChangesAsync();
+
             }
         }
     }
@@ -41,5 +52,22 @@ internal class TipoPessoaSeeder(ApplicationDbContext context) : ITipoPessoaSeede
 
 
         return tipoPessoas;
+    }
+
+    private List<User> CreateUsers()
+    {
+        List<User> users =
+            [
+                new(){
+                    ClientId = "StallosMaster",
+                    ClientSecret = "StallosPassword",
+                    RosterId = "20jv8p2v8nbl6dn7rrcet4bidd",
+                    RosterSecret = "1js72l6hr1hl709u2sk56aj0mthb047irvfrna27b98d8o126q27",
+                    RosterXApi = "Q94j9LQyma446FhErixWe5RzWDtSWKu65HIole5b",
+                }
+
+            ];
+
+        return users;
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace StallosDotnetPleno.Infrastructure.Interfaces;
 
-public interface ITipoPessoaSeeder
+public interface IApplicationDbSedder
 {
     Task Seed();
 }

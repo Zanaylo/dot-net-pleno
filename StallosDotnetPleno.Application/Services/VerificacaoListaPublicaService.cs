@@ -9,11 +9,13 @@ public class VerificacaoListaPublicaService : IVerificacaoListaPublicaService
 {
     private readonly IRosterAuthService _authService;
     private readonly IRosterApiService _rooterApi;
+    private readonly IUserService _userService;
 
-    public VerificacaoListaPublicaService(IRosterAuthService authService, IRosterApiService rooterApi)
+    public VerificacaoListaPublicaService(IRosterAuthService authService, IRosterApiService rooterApi, IUserService userService)
     {
         _authService = authService;
         _rooterApi = rooterApi;
+        _userService = userService;
     }
 
     public async Task<List<PessoaLista>> VerificarListaPublica(Pessoa pessoa)

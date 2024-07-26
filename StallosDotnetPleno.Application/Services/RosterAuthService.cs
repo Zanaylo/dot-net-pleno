@@ -2,16 +2,22 @@
 using System.Text;
 using System.Text.Json;
 using StallosDotnetPleno.Application.Interfaces;
+using StallosDotnetPleno.Domain.Entities;
 
 namespace StallosDotnetPleno.Api.Entities;
 
 public class RosterAuthService : IRosterAuthService
 {
     private readonly HttpClient _httpClient;
+    private readonly IUserService _userService;
     private string _bearerToken = string.Empty;
     private DateTime _tokenExpiration = DateTime.MinValue;
 
-    public RosterAuthService() => _httpClient = new HttpClient();
+    public RosterAuthService(HttpClient httpClient, IUserService userService)
+    {
+        _httpClient = httpClient;
+        _userService = userService;
+    }
 
     public async Task<bool> LoginAuth(string username, string password)
     {
@@ -62,7 +68,9 @@ public class RosterAuthService : IRosterAuthService
     {
         if (string.IsNullOrEmpty(_bearerToken) || DateTime.UtcNow >= _tokenExpiration)
         {
-            var isAuthenticated = await LoginAuth("20jv8p2v8nbl6dn7rrcet4bidd", "1js72l6hr1hl709u2sk56aj0mthb047irvfrna27b98d8o126q27");
+            User credenciais = _userService.ReturnUser();
+
+            var isAuthenticated = await LoginAuth(credenciais.RosterId, credenciais.RosterSecret);
             if (!isAuthenticated)
             {
                 throw new UnauthorizedAccessException("Unable to authenticate and retrieve a valid bearer token.");

@@ -3,24 +3,54 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using StallosDotnetPleno.Application.Interfaces;
+using StallosDotnetPleno.Domain.Entities;
+using StallosDotnetPleno.Infrastructure.Context;
 
 namespace StallosDotnetPleno.Application.Services;
 
-public class UserService : IUserService
+public class UserService(ApplicationDbContext context, IMemoryCache cache) : IUserService
 {
-    private readonly IDictionary<string, string> _users;
+    //private readonly IServiceProvider _serviceProvider;
+    private readonly ApplicationDbContext _context = context;
+    private readonly IMemoryCache _cache = cache;
 
-    public UserService()
+    //public UserService(IServiceProvider serviceProvider, IMemoryCache cache)
+    //{
+    //    _serviceProvider = serviceProvider;
+    //    _cache = cache;
+    //}
+
+    private void SaveUser(User user)
     {
-        _users = new Dictionary<string, string>
-        {
-            { "StallosMaster", "StallosPassword" }
-        };
+        _cache.Set("LoggedUser", user);
     }
 
-    public bool ValidateUser(string username, string password)
+    public bool ValidateUser(string clientId, string clientSecret)
     {
-        return _users.TryGetValue(username, out var storedPassword) && storedPassword == password;
+        var user = GetUserByClientId(clientId);
+
+        if (user != null && user.ClientSecret == clientSecret)
+        {
+            SaveUser(user);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    public User GetUserByClientId(string clientId)
+    {
+        return _context.Users.SingleOrDefault(u => u.ClientId == clientId);
+    }
+
+    public User ReturnUser()
+    {
+        _cache.TryGetValue("LoggedUser", out User loggedUser);
+        return loggedUser;
     }
 }

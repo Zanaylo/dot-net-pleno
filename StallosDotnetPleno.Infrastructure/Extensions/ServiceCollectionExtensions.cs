@@ -20,7 +20,7 @@ public static class ServiceCollectionExtensions
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
-        services.AddScoped<ITipoPessoaSeeder, TipoPessoaSeeder>();
+        services.AddScoped<IApplicationDbSedder, ApplicationDbSedder>();
 
     }
 

@@ -1,6 +1,12 @@
-﻿namespace StallosDotnetPleno.Application.Interfaces;
+﻿using StallosDotnetPleno.Domain.Entities;
+using StallosDotnetPleno.Infrastructure.Context;
 
-public interface IUserService
+namespace StallosDotnetPleno.Application.Interfaces
 {
-    bool ValidateUser(string username, string password);
+    public interface IUserService
+    {
+        User GetUserByClientId(string clientId);
+        User ReturnUser();
+        bool ValidateUser(string clientId, string clientSecret);
+    }
 }

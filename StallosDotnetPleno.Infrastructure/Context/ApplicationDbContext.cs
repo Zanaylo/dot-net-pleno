@@ -15,6 +15,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Endereco> Enderecos { get; set; }
     public DbSet<PessoaEndereco> PessoaEnderecos { get; set; }
     public DbSet<PessoaLista> PessoaListas { get; set; }
+    public DbSet<User> Users { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -27,6 +28,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.Entity<Endereco>().HasKey(e => e.Id);
         modelBuilder.Entity<PessoaEndereco>().HasKey(pe => new { pe.IdPessoa, pe.IdEndereco });
         modelBuilder.Entity<PessoaLista>().HasKey(pl => pl.Id);
+        modelBuilder.Entity<User>().HasKey(u => u.Id);
 
         // Configure relationships
         modelBuilder.Entity<Pessoa>()

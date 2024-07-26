@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StallosDotnetPleno.Application.Interfaces;
+using StallosDotnetPleno.Application.ResultObject;
 using StallosDotnetPleno.Domain.Entities;
 using StallosDotnetPleno.Domain.ViewModels;
 using StallosDotnetPleno.Infrastructure.Context;
@@ -33,10 +34,10 @@ public class PessoaController : ControllerBase
             return BadRequest(result.ErrorMessage);
         }
 
-        return Content($"{postPessoaView.Nome} Criada com sucesso");
+        return Ok(result.Data);
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdatePessoa(int id, PostPessoaView postPessoaView)
     {
         if (!ModelState.IsValid)
@@ -50,10 +51,10 @@ public class PessoaController : ControllerBase
             return NotFound(result.ErrorMessage);
         }
 
-        return NoContent();
+        return Ok(result.Data);
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeletePessoa(int id)
     {
         var result = await _pessoaService.DeletePessoaAsync(id);
@@ -62,10 +63,10 @@ public class PessoaController : ControllerBase
             return NotFound(result.ErrorMessage);
         }
 
-        return NoContent();
+        return Ok(result.Data);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<ActionResult<PessoaView>> GetPessoa(int id)
     {
         var result = await _pessoaService.GetPessoaAsync(id);
@@ -78,9 +79,9 @@ public class PessoaController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<PessoaView>>> GetPessoas()
+    public async Task<ActionResult<PaginatedResult<PessoaView>>> GetPessoas([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
     {
-        var result = await _pessoaService.GetPessoasAsync();
+        var result = await _pessoaService.GetPessoasAsync(pageNumber, pageSize);
         return Ok(result.Data);
     }
 }

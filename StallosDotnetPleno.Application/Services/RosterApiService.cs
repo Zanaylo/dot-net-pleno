@@ -7,7 +7,13 @@ namespace StallosDotnetPleno.Api.Entities;
 
 public class RosterApiService : IRosterApiService
 {
-    private readonly Dictionary<string, string> _protocolCache = new Dictionary<string, string>();
+    private readonly Dictionary<string, string> _protocolCache = new();
+    private readonly IUserService _userService;
+
+    public RosterApiService(IUserService userService)
+    {
+        _userService = userService;
+    }
 
     private async Task<string> GetOrCreateProtocol(string listType, string bearerToken)
     {
@@ -174,7 +180,7 @@ public class RosterApiService : IRosterApiService
         var client = new HttpClient();
         var request = new HttpRequestMessage(HttpMethod.Post, "https://x5hn0kjhpl.execute-api.us-east-2.amazonaws.com/prd/roster/v2/protocolo");
         request.Headers.Add("accept", "application/json");
-        request.Headers.Add("x-api-key", "Q94j9LQyma446FhErixWe5RzWDtSWKu65HIole5b");
+        request.Headers.Add("x-api-key", _userService.ReturnUser().RosterXApi);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
 
         var requestBody = new

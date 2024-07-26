@@ -13,7 +13,7 @@ public interface IPessoaService
 {
     Task<OperationResult> CreatePessoaAsync(PostPessoaView postPessoaView);
     Task<OperationResult> GetPessoaAsync(int id);
-    Task<OperationResult> GetPessoasAsync();
+    Task<OperationResult> GetPessoasAsync(int pageNumber, int pageSize);
     Task<OperationResult> UpdatePessoaAsync(int id, PostPessoaView postPessoaView);
     Task<OperationResult> DeletePessoaAsync(int id);
 }
