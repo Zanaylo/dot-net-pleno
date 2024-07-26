@@ -11,20 +11,19 @@ using System.Text.RegularExpressions;
 
 namespace StallosDotnetPleno.Application.Services;
 
-public class PessoaService(ApplicationDbContext context, IValidationService validationService, IBackgroundTaskQueue taskQueue, IVerificacaoListaPublicaService verificacaoListaPublica, ILogger<PessoaService> logger, IServiceScopeFactory scopeFactory) : IPessoaService
+public class PessoaService(ApplicationDbContext context, IValidationService validationService, IBackgroundTaskQueue taskQueue, ILogger<PessoaService> logger, IServiceScopeFactory scopeFactory) : IPessoaService
 {
     private readonly ApplicationDbContext _context = context;
     private readonly IValidationService _validationService = validationService;
     private readonly IBackgroundTaskQueue _taskQueue = taskQueue;
-    private readonly IVerificacaoListaPublicaService _verificacaoListaPublica = verificacaoListaPublica;
     private readonly ILogger<PessoaService> _logger = logger;
     private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
-    public async Task<OperationResult<int>> CreatePessoaAsync(PostPessoaView postPessoaView)
+    public async Task<OperationResult> CreatePessoaAsync(PostPessoaView postPessoaView)
     {
         TipoPessoa tipoPessoa = await GetTipoPessoaAsync(postPessoaView.TipoPessoa);
         if (tipoPessoa == null)
         {
-            return OperationResult<int>.FailureResult("TipoPessoa inválido.");
+            return OperationResult.FailureResult("TipoPessoa inválido.");
         }
 
         Pessoa pessoa = await MapToPessoaAsync(postPessoaView, tipoPessoa);
@@ -32,7 +31,7 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
         OperationResult validationResult = ValidatePessoa(pessoa);
         if (!validationResult.Success)
         {
-            return OperationResult<int>.FailureResult(validationResult.ErrorMessage);
+            return OperationResult.FailureResult(validationResult.ErrorMessage);
         }
 
         await _context.Pessoas.AddAsync(pessoa);
@@ -51,10 +50,10 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
         });
 
 
-        return OperationResult<int>.SuccessResult(pessoa.Id);
+        return OperationResult.SuccessResult(pessoa.Id);
     }
 
-    public async Task<OperationResult<PessoaView>> GetPessoaAsync(int id)
+    public async Task<OperationResult> GetPessoaAsync(int id)
     {
         var pessoa = await _context.Pessoas
             .Include(p => p.TipoPessoa)
@@ -64,13 +63,13 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
 
         if (pessoa == null)
         {
-            return OperationResult<PessoaView>.FailureResult("Pessoa não encontrada.");
+            return OperationResult.FailureResult("Pessoa não encontrada.");
         }
 
-        return OperationResult<PessoaView>.SuccessResult(MapToPessoaView(pessoa));
+        return OperationResult.SuccessResult(MapToPessoaView(pessoa));
     }
 
-    public async Task<OperationResult<List<PessoaView>>> GetPessoasAsync()
+    public async Task<OperationResult> GetPessoasAsync()
     {
         var pessoas = await _context.Pessoas
             .Include(p => p.TipoPessoa)
@@ -78,11 +77,12 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
             .Include(p => p.PessoaListas)
             .ToListAsync();
 
-        return OperationResult<List<PessoaView>>.SuccessResult(pessoas.Select(p => MapToPessoaView(p)).ToList());
+        return OperationResult.SuccessResult(pessoas.Select(p => MapToPessoaView(p)).ToList());
     }
 
     public async Task<OperationResult> UpdatePessoaAsync(int id, PostPessoaView postPessoaView)
     {
+        var documentCorrigido = Regex.Replace(postPessoaView.Documento, @"[^\d]", "");
 
         var cadastroPessoa = await _context.Pessoas
             .Include(p => p.TipoPessoa)
@@ -98,52 +98,92 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
         TipoPessoa tipoPessoa = await GetTipoPessoaAsync(postPessoaView.TipoPessoa);
         if (tipoPessoa == null)
         {
-            return OperationResult<int>.FailureResult("TipoPessoa inválido.");
-        }
-
-        Pessoa pessoa = await MapToPessoaAsync(postPessoaView, tipoPessoa);
-
-        OperationResult validationResult = ValidatePessoa(pessoa);
-
-        if (!validationResult.Success)
-        {
-            return OperationResult<int>.FailureResult(validationResult.ErrorMessage);
-        }
-
-        var validationResult = cadastroPessoa.Documento != pessoa.Documento
-            ? ValidatePessoa(pessoa)
-            : ValidatePessoaPut(pessoa);
-
-        if (!validationResult.Success)
-        {
-            return OperationResult.FailureResult(validationResult.ErrorMessage);
-        }
-
-        var tipoPessoa = await GetTipoPessoaAsync(postPessoaView.TipoPessoa);
-        if (tipoPessoa == null)
-        {
             return OperationResult.FailureResult("TipoPessoa inválido.");
         }
 
-        await UpdatePessoaFromViewAsync(pessoa, postPessoaView, tipoPessoa);
+        var existingPessoa = await _context.Pessoas
+            .FirstOrDefaultAsync(p => p.Documento == documentCorrigido && p.Id != id);
+        if (existingPessoa != null)
+        {
+            return OperationResult.FailureResult("Documento já cadastrado para outra pessoa.");
+        }
 
-        _context.Pessoas.Update(pessoa);
+        var documentChanged = cadastroPessoa.Documento != documentCorrigido;
+        var tipoPessoaChanged = cadastroPessoa.TipoPessoa != tipoPessoa;
+        var nomeChanged = cadastroPessoa.Nome != postPessoaView.Nome;
+
+        if (tipoPessoaChanged && !documentChanged)
+        {
+            return OperationResult.FailureResult("Tipo Pessoa só poderá ser alterado se o documento também ser alterado.");
+        }
+
+        postPessoaView.Documento = documentCorrigido;
+        await UpdatePessoaFromViewAsync(cadastroPessoa, postPessoaView, tipoPessoa);
+
+        var oldEnderecos = cadastroPessoa.PessoaEnderecos.Select(pe => pe.Endereco).ToList();
+        var newEnderecos = cadastroPessoa.PessoaEnderecos.Select(pe => pe.Endereco).ToList();
+        var removedEnderecos = oldEnderecos.Except(newEnderecos).ToList();
+
+        _context.Pessoas.Update(cadastroPessoa);
         await _context.SaveChangesAsync();
+
+        var unusedEnderecos = await _context.Enderecos
+            .Where(e => removedEnderecos.Select(re => re.Id).Contains(e.Id) &&
+                        !_context.PessoaEnderecos.Any(pe => pe.IdEndereco == e.Id))
+            .ToListAsync();
+
+        if (unusedEnderecos.Count != 0)
+        {
+            _context.Enderecos.RemoveRange(unusedEnderecos);
+            await _context.SaveChangesAsync();
+        }
+
+        if (documentChanged || nomeChanged)
+        {
+            cadastroPessoa.PessoaListas.Clear();
+            await _context.SaveChangesAsync();
+            _taskQueue.QueueBackgroundWorkItem(async token =>
+            {
+                try
+                {
+                    await CheckPublicListAsync(cadastroPessoa, token);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Erro ao buscar na lista.");
+                }
+            });
+        }
 
         return OperationResult.SuccessResult();
     }
 
+
     public async Task<OperationResult> DeletePessoaAsync(int id)
     {
-        var pessoa = await _context.Pessoas.FindAsync(id);
+        var pessoa = await _context.Pessoas
+            .Include(p => p.PessoaEnderecos)
+            .FirstOrDefaultAsync(p => p.Id == id);
 
         if (pessoa == null)
         {
             return OperationResult.FailureResult("Pessoa não encontrada.");
         }
 
+        var enderecosId = pessoa.PessoaEnderecos.Select(pe => pe.IdEndereco).ToList();
+
         _context.Pessoas.Remove(pessoa);
         await _context.SaveChangesAsync();
+
+        var orpahnEnderecos = await _context.Enderecos
+            .Where(e => enderecosId.Contains(e.Id) && !_context.PessoaEnderecos.Any(pe => pe.IdEndereco == e.Id))
+            .ToListAsync();
+
+        if (orpahnEnderecos.Count != 0)
+        {
+            _context.Enderecos.RemoveRange(orpahnEnderecos);
+            await _context.SaveChangesAsync();
+        }
 
         return OperationResult.SuccessResult();
     }
@@ -251,7 +291,7 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
         return pessoa;
     }
 
-    private PessoaView MapToPessoaView(Pessoa pessoa)
+    private static PessoaView MapToPessoaView(Pessoa pessoa)
     {
         return new PessoaView
         {
@@ -278,7 +318,8 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
         pessoa.Documento = postPessoaView.Documento;
         pessoa.TipoPessoa = tipoPessoa;
 
-        pessoa.PessoaEnderecos.Clear();
+        var newPessoaEnderecos = new List<PessoaEndereco>();
+
         foreach (var enderecoView in postPessoaView.Enderecos)
         {
             var endereco = await GetExistingEnderecoAsync(enderecoView);
@@ -293,12 +334,12 @@ public class PessoaService(ApplicationDbContext context, IValidationService vali
                     Cidade = enderecoView.Cidade,
                     Uf = enderecoView.Uf
                 };
+                _context.Enderecos.Add(endereco);
             }
-
-            pessoa.PessoaEnderecos.Add(new PessoaEndereco
-            {
-                Endereco = endereco
-            });
+            newPessoaEnderecos.Add(new PessoaEndereco { Endereco = endereco });
         }
+
+        pessoa.PessoaEnderecos.Clear();
+        pessoa.PessoaEnderecos.AddRange(newPessoaEnderecos);
     }
 }

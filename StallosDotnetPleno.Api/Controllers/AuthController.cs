@@ -5,31 +5,37 @@ using StallosDotnetPleno.Application.Services;
 using StallosDotnetPleno.Domain.ViewModels;
 
 namespace StallosDotnetPleno.Api.Controllers;
-
-
 [ApiController]
 [Route("auth")]
 public class AuthController : ControllerBase
 {
-    private readonly IUserService _userService;
     private readonly ITokenService _tokenService;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(ITokenService tokenService, IUserService userService)
+    public AuthController(ITokenService tokenService, ILogger<AuthController> logger)
     {
         _tokenService = tokenService;
-        _userService = userService;
+        _logger = logger;
     }
 
     [HttpPost("token")]
     [Authorize(AuthenticationSchemes = "Basic")]
     public IActionResult GenerateToken()
     {
-        var username = HttpContext.User.Identity.Name;
-        if (username != null && HttpContext.User.Identity.IsAuthenticated)
+        try
         {
-            var token = _tokenService.GenerateToken(username);
-            return Ok(new { token });
+            var username = HttpContext.User.Identity!.Name;
+            if (username != null && HttpContext.User.Identity.IsAuthenticated)
+            {
+                var token = _tokenService.GenerateToken(username);
+                return Ok(new { token });
+            }
+            return Unauthorized();
         }
-        return Unauthorized();
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error generating token for user: {HttpContext.User.Identity!.Name}");
+            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
+        }
     }
 }

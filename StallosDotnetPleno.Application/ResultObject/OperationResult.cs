@@ -10,29 +10,20 @@ public class OperationResult
 {
     public bool Success { get; }
     public string ErrorMessage { get; }
+    public object Data { get; }
 
-    protected OperationResult(bool success, string errorMessage)
+    protected OperationResult(bool success, string errorMessage, object data = null)
     {
         Success = success;
         ErrorMessage = errorMessage;
+        Data = data;
     }
 
     public static OperationResult SuccessResult() => new OperationResult(true, null);
 
     public static OperationResult FailureResult(string errorMessage) => new OperationResult(false, errorMessage);
-}
 
-public class OperationResult<T> : OperationResult
-{
-    public T Data { get; }
+    public static OperationResult SuccessResult(object data) => new OperationResult(true, null, data);
 
-    private OperationResult(bool success, T data, string errorMessage)
-        : base(success, errorMessage)
-    {
-        Data = data;
-    }
-
-    public static OperationResult<T> SuccessResult(T data) => new OperationResult<T>(true, data, null);
-
-    public static OperationResult<T> FailureResult(string errorMessage) => new OperationResult<T>(false, default(T), errorMessage);
+    public static OperationResult FailureResult(string errorMessage, object data) => new OperationResult(false, errorMessage, data);
 }

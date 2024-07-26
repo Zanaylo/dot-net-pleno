@@ -31,13 +31,13 @@ builder.Services.AddScoped<IPessoaService, PessoaService>();
 builder.Services.AddScoped<IValidationService, ValidationService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IVerificacaoListaPublicaService, VerificacaoListaPublicaService>();
-builder.Services.AddScoped<IRoosterAuthService, RoosterAuthService>();
-builder.Services.AddScoped<IRooterApiService, RooterApiService>();
+builder.Services.AddScoped<IRosterAuthService, RosterAuthService>();
+builder.Services.AddScoped<IRosterApiService, RosterApiService>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
 builder.Services.AddHostedService<BackgroundTaskService>();
 
-var key = Encoding.ASCII.GetBytes("StallosDotNetPlenoTesteResgateDeInformacaoEmListaPublica");
+var key = Encoding.ASCII.GetBytes(builder.Configuration["Jwt:SecretKey"]!);
 
 
 builder.Services.AddAuthentication("Basic")
@@ -111,7 +111,6 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 app.UseMiddleware<UnauthorizedResponseMiddleware>();
-app.UseMiddleware<PessoaDataAnnotationException>();
 
 var scope = app.Services.CreateScope();
 

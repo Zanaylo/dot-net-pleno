@@ -11,9 +11,9 @@ namespace StallosDotnetPleno.Application.Interfaces;
 
 public interface IPessoaService
 {
-    Task<OperationResult<int>> CreatePessoaAsync(PostPessoaView postPessoaView);
-    Task<OperationResult<PessoaView>> GetPessoaAsync(int id);
-    Task<OperationResult<List<PessoaView>>> GetPessoasAsync();
+    Task<OperationResult> CreatePessoaAsync(PostPessoaView postPessoaView);
+    Task<OperationResult> GetPessoaAsync(int id);
+    Task<OperationResult> GetPessoasAsync();
     Task<OperationResult> UpdatePessoaAsync(int id, PostPessoaView postPessoaView);
     Task<OperationResult> DeletePessoaAsync(int id);
 }

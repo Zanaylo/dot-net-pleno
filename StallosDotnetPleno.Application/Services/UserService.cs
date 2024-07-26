@@ -9,8 +9,18 @@ namespace StallosDotnetPleno.Application.Services;
 
 public class UserService : IUserService
 {
+    private readonly IDictionary<string, string> _users;
+
+    public UserService()
+    {
+        _users = new Dictionary<string, string>
+        {
+            { "StallosMaster", "StallosPassword" }
+        };
+    }
+
     public bool ValidateUser(string username, string password)
     {
-        return username == "StallosMaster" && password == "StallosPassword";
+        return _users.TryGetValue(username, out var storedPassword) && storedPassword == password;
     }
 }

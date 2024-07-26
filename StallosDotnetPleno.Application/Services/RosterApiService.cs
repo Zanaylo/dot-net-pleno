@@ -5,13 +5,24 @@ using System.Text.Json;
 
 namespace StallosDotnetPleno.Api.Entities;
 
-public class RooterApiService(IRoosterAuthService authService) : IRooterApiService
+public class RosterApiService : IRosterApiService
 {
-    public async Task<string> BolsaFamilia(string name, string cpf, string authorizationToken)
+    private readonly Dictionary<string, string> _protocolCache = new Dictionary<string, string>();
+
+    private async Task<string> GetOrCreateProtocol(string listType, string bearerToken)
+    {
+        if (!_protocolCache.TryGetValue(listType, out var protocol) || string.IsNullOrEmpty(protocol))
+        {
+            protocol = await GetProtocol(bearerToken, listType);
+            _protocolCache[listType] = protocol;
+        }
+        return protocol;
+    }
+
+    public async Task<string> ConsultaBolsaFamilia(string name, string cpf, string authorizationToken)
     {
         var client = new HttpClient();
-        var protocolo = await GetProtocol(authorizationToken);
-        //var requestUri = $"https://x5hn0kjhpl.execute-api.us-east-2.amazonaws.com/prd/roster/v2/bolsa-familia?nome={Uri.EscapeDataString(name)}";
+        var protocolo = await GetOrCreateProtocol("bolsa-familia", authorizationToken);
         var requestUri = $"https://x5hn0kjhpl.execute-api.us-east-2.amazonaws.com/prd/roster/v2/bolsa-familia?nome={Uri.EscapeDataString(name)}&cpf={Uri.EscapeDataString(cpf)}";
         var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
         request.Headers.Add("accept", "application/json");
@@ -38,10 +49,10 @@ public class RooterApiService(IRoosterAuthService authService) : IRooterApiServi
         }
     }
 
-    public async Task<string> Pep(string name, string cpf, string authorizationToken)
+    public async Task<string> ConsultaPep(string name, string cpf, string authorizationToken)
     {
         var client = new HttpClient();
-        var protocolo = await GetProtocol(authorizationToken);
+        var protocolo = await GetOrCreateProtocol("pep", authorizationToken);
         var requestUri = $"https://x5hn0kjhpl.execute-api.us-east-2.amazonaws.com/prd/roster/v2/pep?nome={Uri.EscapeDataString(name)}&cpf={Uri.EscapeDataString(cpf)}";
         var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
         request.Headers.Add("accept", "application/json");
@@ -68,10 +79,10 @@ public class RooterApiService(IRoosterAuthService authService) : IRooterApiServi
         }
     }
 
-    public async Task<string> Interpol(string name, string cpf, string authorizationToken)
+    public async Task<string> ConsultaInterpol(string name, string cpf, string authorizationToken)
     {
         var client = new HttpClient();
-        var protocolo = await GetProtocol(authorizationToken);
+        var protocolo = await GetOrCreateProtocol("interpol", authorizationToken);
         var requestUri = $"https://x5hn0kjhpl.execute-api.us-east-2.amazonaws.com/prd/roster/v2/interpol?nome={Uri.EscapeDataString(name)}&cpf={Uri.EscapeDataString(cpf)}";
         var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
         request.Headers.Add("accept", "application/json");
@@ -98,10 +109,10 @@ public class RooterApiService(IRoosterAuthService authService) : IRooterApiServi
         }
     }
 
-    public async Task<string> Cepim(string name, string authorizationToken)
+    public async Task<string> ConsultaCepim(string name, string authorizationToken)
     {
         var client = new HttpClient();
-        var protocolo = await GetProtocol(authorizationToken);
+        var protocolo = await GetOrCreateProtocol("cepim", authorizationToken);
         var requestUri = $"https://x5hn0kjhpl.execute-api.us-east-2.amazonaws.com/prd/roster/v2/cepim?nome={Uri.EscapeDataString(name)}";
         var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
         request.Headers.Add("accept", "application/json");
@@ -128,10 +139,10 @@ public class RooterApiService(IRoosterAuthService authService) : IRooterApiServi
         }
     }
 
-    public async Task<string> Ofac(string name, string authorizationToken)
+    public async Task<string> ConsultaOfac(string name, string authorizationToken)
     {
         var client = new HttpClient();
-        var protocolo = await GetProtocol(authorizationToken);
+        var protocolo = await GetOrCreateProtocol("ofac", authorizationToken);
         var requestUri = $"https://x5hn0kjhpl.execute-api.us-east-2.amazonaws.com/prd/roster/v2/ofac?nome={Uri.EscapeDataString(name)}";
         var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
         request.Headers.Add("accept", "application/json");
@@ -158,7 +169,7 @@ public class RooterApiService(IRoosterAuthService authService) : IRooterApiServi
         }
     }
 
-    public async Task<string> GetProtocol(string bearerToken)
+    private async Task<string> GetProtocol(string bearerToken, string listType)
     {
         var client = new HttpClient();
         var request = new HttpRequestMessage(HttpMethod.Post, "https://x5hn0kjhpl.execute-api.us-east-2.amazonaws.com/prd/roster/v2/protocolo");
@@ -175,27 +186,7 @@ public class RooterApiService(IRoosterAuthService authService) : IRooterApiServi
                 Nome = "XPTO",
                 Documento = "00000000000"
             },
-            Listas = new string[]
-            {
-                "bolsa-familia",
-                "cnep",
-                "cepim",
-                "ceis",
-                "ceaf",
-                "csnu",
-                "auxilio-emergencial",
-                "pep",
-                "garantia-safra",
-                "peti",
-                "ofac",
-                "seguro-defeso",
-                "inabilitados-bacen",
-                "interpol",
-                "ibama",
-                "tcu",
-                "fbi",
-                "combate-escravidao"
-            }
+            Listas = new string[] { listType }
         };
 
         var content = new StringContent(
@@ -218,10 +209,8 @@ public class RooterApiService(IRoosterAuthService authService) : IRooterApiServi
         }
         else
         {
-
             return string.Empty;
         }
-
     }
 
     private class ProtocoloResponse
@@ -229,5 +218,4 @@ public class RooterApiService(IRoosterAuthService authService) : IRooterApiServi
         public string Protocolo { get; set; }
         public string Message { get; set; }
     }
-
 }

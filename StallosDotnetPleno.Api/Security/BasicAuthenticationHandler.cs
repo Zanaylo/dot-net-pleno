@@ -31,7 +31,7 @@ public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSc
             return AuthenticateResult.Fail("Error Authorization Header");
 
         bool isValid = false;
-        string username = null;
+        string username = string.Empty;
 
         try
         {

@@ -5,14 +5,15 @@ using StallosDotnetPleno.Application.Interfaces;
 
 namespace StallosDotnetPleno.Api.Entities;
 
-public class RoosterAuthService : IRoosterAuthService
+public class RosterAuthService : IRosterAuthService
 {
     private readonly HttpClient _httpClient;
     private string _bearerToken = string.Empty;
+    private DateTime _tokenExpiration = DateTime.MinValue;
 
-    public RoosterAuthService() => _httpClient = new HttpClient();
+    public RosterAuthService() => _httpClient = new HttpClient();
 
-    public async Task LoginAuth(string username, string password)
+    public async Task<bool> LoginAuth(string username, string password)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "https://stallosopendata.auth.us-east-2.amazoncognito.com/oauth2/token");
         request.Headers.Add("accept", "*/*");
@@ -41,21 +42,37 @@ public class RoosterAuthService : IRoosterAuthService
             if (!string.IsNullOrEmpty(bearerToken))
             {
                 _bearerToken = bearerToken;
+                _tokenExpiration = DateTime.UtcNow.AddSeconds(tokenResponse.expires_in);
+                return true;
             }
-
         }
+        return false;
     }
 
     public string GetBearerToken()
     {
+        if (DateTime.UtcNow >= _tokenExpiration)
+        {
+            _bearerToken = string.Empty;
+        }
         return _bearerToken;
     }
 
+    public async Task EnsureTokenAsync()
+    {
+        if (string.IsNullOrEmpty(_bearerToken) || DateTime.UtcNow >= _tokenExpiration)
+        {
+            var isAuthenticated = await LoginAuth("20jv8p2v8nbl6dn7rrcet4bidd", "1js72l6hr1hl709u2sk56aj0mthb047irvfrna27b98d8o126q27");
+            if (!isAuthenticated)
+            {
+                throw new UnauthorizedAccessException("Unable to authenticate and retrieve a valid bearer token.");
+            }
+        }
+    }
     public class TokenResponse
     {
         public string access_token { get; set; }
         public int expires_in { get; set; }
         public string token_type { get; set; }
     }
-
 }

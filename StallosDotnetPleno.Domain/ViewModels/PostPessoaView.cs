@@ -12,6 +12,7 @@ namespace StallosDotnetPleno.Domain.ViewModels;
 public class PostPessoaView
 {
     [Required(ErrorMessage = "Campo nome é requerido")]
+    [StringLength(255)]
     public string Nome { get; set; } = null!;
 
     [Required(ErrorMessage = "Campo TipoPessoa é requerido")]

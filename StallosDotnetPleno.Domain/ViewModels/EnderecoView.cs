@@ -11,16 +11,21 @@ namespace StallosDotnetPleno.Domain.ViewModels;
 public class EnderecoView
 {
     [Required(ErrorMessage = "Campo Cep é requerido")]
+    [StringLength(8)]
     public string Cep { get; set; } = null!;
     [Required(ErrorMessage = "Campo nome Logradouro é requerido")]
+    [StringLength(255)]
     public string Logradouro { get; set; } = null!;
     [Required(ErrorMessage = "Campo nome Número é requerido")]
+    [StringLength(8)]
     public string Numero { get; set; } = null!;
 
     [Required(ErrorMessage = "Campo nome Bairro é requerido")]
+    [StringLength(255)]
     public string Bairro { get; set; } = null!;
 
     [Required(ErrorMessage = "Campo nome Cidade é requerido")]
+    [StringLength(255)]
     public string Cidade { get; set; } = null!;
 
     [Required(ErrorMessage = "Campo nome Uf é requerido")]

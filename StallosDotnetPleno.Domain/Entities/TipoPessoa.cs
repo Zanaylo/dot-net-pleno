@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
@@ -11,5 +12,6 @@ namespace StallosDotnetPleno.Domain.Entities;
 public class TipoPessoa
 {
     public int Id { get; set; }
+    [StringLength(2)]
     public string Tipo { get; set; } // PF | PJ
 }
